@@ -5,6 +5,7 @@ import { EntityManager } from '@mikro-orm/core';
 import { SettingsService } from '../settings/settings.service';
 import { OffdaysService } from '../offdays/offdays.service';
 import { UnavailableHoursService } from '../unavailable-hours/unavailable-hours.service';
+import { isValidDateFormat, isValidTimeFormat } from '../../common/utils/time.util';
 
 type Slot = {
   date: string;
@@ -50,6 +51,8 @@ export class AppointmentsService {
   }
 
   async getAvailableSlots(date: string) {
+    this.validateDate(date);
+
     const offday = await this.offdaysService.findByDate(date);
 
     if (offday) {
@@ -136,7 +139,13 @@ export class AppointmentsService {
   }
 
   async bookAppointment(dto: { date: string; time: string }) {
+    if (!dto) {
+      throw new BadRequestException('Date and time are required');
+    }
+
     const { date, time } = dto;
+    this.validateDate(date);
+    this.validateTime(time);
 
     const offday = await this.offdaysService.findByDate(date);
 
@@ -244,5 +253,17 @@ export class AppointmentsService {
       time >= this.toMinutes(r.startTime) &&
       time < this.toMinutes(r.endTime),
     );
+  }
+
+  private validateDate(date: string) {
+    if (!date || !isValidDateFormat(date)) {
+      throw new BadRequestException('Date must be in YYYY-MM-DD format');
+    }
+  }
+
+  private validateTime(time: string) {
+    if (!time || !isValidTimeFormat(time)) {
+      throw new BadRequestException('Time must be in HH:mm format');
+    }
   }
 }

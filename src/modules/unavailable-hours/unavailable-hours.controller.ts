@@ -1,12 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { UnavailableHoursService } from './unavailable-hours.service';
+
+type CreateUnavailableHourBody = {
+  startTime: string;
+  endTime: string;
+};
 
 @Controller('unavailable-hours')
 export class UnavailableHoursController {
   constructor(private readonly unavailableHoursService: UnavailableHoursService) {}
 
   @Post()
-  create(@Body() dto) {
+  create(@Body() dto: CreateUnavailableHourBody) {
     return this.unavailableHoursService.create(dto);
   }
 

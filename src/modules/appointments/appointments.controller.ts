@@ -2,6 +2,11 @@ import { Controller, Get, Post, Query, Body, Param, ParseIntPipe,  Delete,
 } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 
+type BookAppointmentBody = {
+  date: string;
+  time: string;
+};
+
 @Controller('appointments')
 export class AppointmentsController {
 
@@ -23,7 +28,7 @@ export class AppointmentsController {
   }
 
   @Post()
-  bookAppointment(@Body() body: any) {
+  bookAppointment(@Body() body: BookAppointmentBody) {
     return this.appointmentsService.bookAppointment(body);
   }
 
