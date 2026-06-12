@@ -42,32 +42,51 @@ export class AppointmentsService {
   
     const duration = (await this.settingsService.getSlotDuration()).value;
     const capacity = (await this.settingsService.getSlotCapacity()).value;
+
+    const { start, end } = await this.settingsService.getWorkingHours();
   
     if (!duration || duration < 5) {
       throw new BadRequestException('Invalid slot duration config');
     }
+
+    if (!capacity || capacity < 1) {
+      throw new BadRequestException('Invalid slot capacity config');
+    }
+
+    const workingDays = (await this.settingsService.getWorkingDays()).value;
+
+    const dateObj = new Date(date);
+    const dayMap = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    const day = dayMap[dateObj.getDay()];
+
+    if (!workingDays.includes(day)) {
+      return [];
+    }
+
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+
+    let current = sh * 60 + sm;
+    const endMin = eh * 60 + em;
   
     const slotCounts = await this.getSlotCounts(date);
   
-    let start = 9 * 60;
-    const end = 18 * 60;
-  
-    while (start < end) {
-      const hours = Math.floor(start / 60);
-      const minutes = start % 60;
-  
+    while (current < endMin) {
+      const hours = Math.floor(current / 60);
+      const minutes = current % 60;
+
       const time = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
-  
+
       const bookedCount = slotCounts.get(time) || 0;
       const available = Math.max(capacity - bookedCount, 0);
-  
+
       slots.push({
         date,
         time,
         available_slots: available,
       });
-  
-      start += duration;
+
+      current += duration;
     }
   
     return slots;
