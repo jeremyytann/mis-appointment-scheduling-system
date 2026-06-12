@@ -118,6 +118,28 @@ export class AppointmentsService {
       );
     }
 
+    const duration = (await this.settingsService.getSlotDuration()).value;
+    const { start, end } = await this.settingsService.getWorkingHours();
+
+    const bookingMinutes = this.toMinutes(time);
+    const startMinutes = this.toMinutes(start);
+    const endMinutes = this.toMinutes(end);
+
+    if (
+      bookingMinutes < startMinutes ||
+      bookingMinutes >= endMinutes
+    ) {
+      throw new BadRequestException(
+        'This booking time is outside operational hours',
+      );
+    }
+
+    if ((bookingMinutes - startMinutes) % duration !== 0) {
+      throw new BadRequestException(
+        'Booking time does not align with slot duration',
+      );
+    }
+
     const unavailableHours = await this.unavailableHoursService.findAllActive();
 
     let current = this.toMinutes(time);
