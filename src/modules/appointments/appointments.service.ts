@@ -182,23 +182,33 @@ export class AppointmentsService {
     // Check if appointment isalready booked
     const capacity = (await this.settingsService.getSlotCapacity()).value;
 
-    const count = await this.em.count(Appointment, {
-      date,
-      startTime: time,
+    const appointment = await this.em.transactional(async (em) => {
+      await em
+        .getConnection()
+        .execute('select pg_advisory_xact_lock(hashtext(?))', [
+          `${date}:${time}`,
+        ]);
+
+      const count = await em.count(Appointment, {
+        date,
+        startTime: time,
+      });
+
+      if (count >= capacity) {
+        throw new BadRequestException('Slot is fully booked');
+      }
+
+      // Create new appointment
+      const appointment = em.create(Appointment, {
+        date,
+        startTime: time,
+        endTime: this.getEndTime(time, duration),
+      });
+
+      await em.persistAndFlush(appointment);
+
+      return appointment;
     });
-  
-    if (count >= capacity) {
-      throw new BadRequestException('Slot is fully booked');
-    }
-  
-    // Create new appointment
-    const appointment = this.em.create(Appointment, {
-      date,
-      startTime: time,
-      endTime: this.getEndTime(time, duration),
-    });
-    
-    await this.em.persistAndFlush(appointment);
   
     return {
       message: 'Appointment booked successfully',
