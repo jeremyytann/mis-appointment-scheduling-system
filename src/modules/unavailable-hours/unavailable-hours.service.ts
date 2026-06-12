@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { UnavailableHour } from './entities/unavailable-hour.entity';
 import { EntityRepository } from '@mikro-orm/core';
@@ -49,7 +49,7 @@ export class UnavailableHoursService {
     const offdays = await this.repo.findOne({ id });
   
     if (!offdays) {
-      throw new BadRequestException('Unavailable hour not found');
+      throw new NotFoundException('Unavailable hour not found');
     }
   
     await this.repo.getEntityManager().removeAndFlush(offdays);

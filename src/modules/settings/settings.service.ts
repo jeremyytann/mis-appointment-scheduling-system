@@ -3,7 +3,7 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/core';
 import { Setting } from './entities/setting.entity';
 import { DEFAULT_SLOT_CAPACITY, DEFAULT_SLOT_DURATION, DEFAULT_WORKING_DAYS, DEFAULT_WORKING_END, DEFAULT_WORKING_START, MAX_SLOT_CAPACITY, MIN_SLOT_CAPACITY, MIN_SLOT_DURATION } from '../../config/defaults';
-import { isValidTimeFormat } from 'src/common/utils/time.util';
+import { isValidTimeFormat } from '../../common/utils/time.util';
 
 function toMinutes(time: string) {
   const [h, m] = time.split(':').map(Number);
@@ -26,9 +26,14 @@ export class SettingsService {
     };
   }
 
-  async updateSlotDuration(value: number) {
+  async updateSlotDuration(value?: number) {
+    const duration = Number(value);
 
-    if (value < MIN_SLOT_DURATION) {
+    if (!Number.isInteger(duration)) {
+      throw new BadRequestException('Slot duration must be a whole number');
+    }
+
+    if (duration < MIN_SLOT_DURATION) {
       throw new BadRequestException('Minimum slot duration is 5 minutes');
     }
 
@@ -37,17 +42,17 @@ export class SettingsService {
     if (!setting) {
       setting = this.settingRepo.create({
         key: 'slot_duration',
-        value: String(value),
+        value: String(duration),
       });
     } else {
-      setting.value = String(value);
+      setting.value = String(duration);
     }
 
     await this.settingRepo.getEntityManager().persistAndFlush(setting);
 
     return {
       message: 'Slot duration updated',
-      value,
+      value: duration,
     };
   }
 
@@ -61,9 +66,14 @@ export class SettingsService {
     };
   }
 
-  async updateSlotCapacity(value: number) {
+  async updateSlotCapacity(value?: number) {
+    const capacity = Number(value);
 
-    if (value < MIN_SLOT_CAPACITY || value > MAX_SLOT_CAPACITY) {
+    if (!Number.isInteger(capacity)) {
+      throw new BadRequestException('Slot capacity must be a whole number');
+    }
+
+    if (capacity < MIN_SLOT_CAPACITY || capacity > MAX_SLOT_CAPACITY) {
       throw new BadRequestException('Capacity must be between 1 and 5');
     }
   
@@ -74,17 +84,17 @@ export class SettingsService {
     if (!setting) {
       setting = this.settingRepo.create({
         key: 'slot_capacity',
-        value: String(value),
+        value: String(capacity),
       });
     } else {
-      setting.value = String(value);
+      setting.value = String(capacity);
     }
   
     await this.settingRepo.getEntityManager().persistAndFlush(setting);
   
     return {
       message: 'Slot capacity updated',
-      value,
+      value: capacity,
     };
   }
 
@@ -98,7 +108,7 @@ export class SettingsService {
     };
   }
 
-  async updateWorkingHours(start: string, end: string) {
+  async updateWorkingHours(start?: string, end?: string) {
     if (!start || !end) {
       throw new BadRequestException('Start and end time are required');
     }
@@ -139,12 +149,18 @@ export class SettingsService {
     };
   }
 
-  async updateWorkingDays(days: string[]) {
+  async updateWorkingDays(days?: string[]) {
     const allowed = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+
+    if (!Array.isArray(days) || days.length === 0) {
+      throw new BadRequestException('Working days must be a non-empty array');
+    }
   
     for (const d of days) {
       if (!allowed.includes(d)) {
-        throw new BadRequestException('Invalid working day');
+        throw new BadRequestException(
+          `Invalid working day: ${d}. Allowed values are ${allowed.join(', ')}`,
+        );
       }
     }
   

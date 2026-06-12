@@ -14,7 +14,7 @@ export class SettingsController {
 
   @Patch('slot-duration')
   updateSlotDuration(@Body() body: { value: number }) {
-    return this.settingsService.updateSlotDuration(body.value);
+    return this.settingsService.updateSlotDuration(body?.value);
   }
 
   @Get('slot-capacity')
@@ -24,7 +24,7 @@ export class SettingsController {
 
   @Patch('slot-capacity')
   updateSlotCapacity(@Body() body: { value: number }) {
-    return this.settingsService.updateSlotCapacity(body.value);
+    return this.settingsService.updateSlotCapacity(body?.value);
   }
 
   @Get('working-hours')
@@ -34,7 +34,7 @@ export class SettingsController {
 
   @Patch('working-hours')
   updateWorkingHours(@Body() dto: UpdateWorkingHoursDto) {
-    return this.settingsService.updateWorkingHours(dto.start, dto.end);
+    return this.settingsService.updateWorkingHours(dto?.start, dto?.end);
   }
 
   @Get('working-days')
@@ -44,6 +44,6 @@ export class SettingsController {
 
   @Patch('working-days')
   updateWorkingDays(@Body() body: { days: string[] }) {
-    return this.settingsService.updateWorkingDays(body.days);
+    return this.settingsService.updateWorkingDays(body?.days);
   }
 }

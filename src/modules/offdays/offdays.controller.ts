@@ -7,7 +7,7 @@ export class OffdaysController {
 
   @Post()
   create(@Body() body: { date: string; name: string }) {
-    return this.offdaysService.create(body.date, body.name);
+    return this.offdaysService.create(body?.date, body?.name);
   }
 
   @Get()

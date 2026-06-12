@@ -1,17 +1,10 @@
-import { InjectRepository } from '@mikro-orm/nestjs';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Appointment } from './entities/appointment.entity';
 import { EntityManager } from '@mikro-orm/core';
 import { SettingsService } from '../settings/settings.service';
 import { OffdaysService } from '../offdays/offdays.service';
 import { UnavailableHoursService } from '../unavailable-hours/unavailable-hours.service';
 import { isValidDateFormat, isValidTimeFormat } from '../../common/utils/time.util';
-
-type Slot = {
-  date: string;
-  time: string;
-  available_slots: number;
-};
 
 @Injectable()
 export class AppointmentsService {
@@ -30,7 +23,7 @@ export class AppointmentsService {
     const appointment = await this.em.findOne(Appointment, { id });
 
     if (!appointment) {
-      throw new BadRequestException('Appointment not found');
+      throw new NotFoundException('Appointment not found');
     }
 
     return appointment;
@@ -40,7 +33,7 @@ export class AppointmentsService {
     const appointment = await this.em.findOne(Appointment, { id });
 
     if (!appointment) {
-      throw new BadRequestException('Appointment not found');
+      throw new NotFoundException('Appointment not found');
     }
 
     await this.em.removeAndFlush(appointment);
@@ -85,18 +78,11 @@ export class AppointmentsService {
   private async generateSlots(date: string) {
     const slots: any[] = [];
   
-    const duration = (await this.settingsService.getSlotDuration()).value;
-    const capacity = (await this.settingsService.getSlotCapacity()).value;
+    const duration = await this.getValidatedSlotDuration();
+    const capacity = await this.getValidatedSlotCapacity();
 
     const { start, end } = await this.settingsService.getWorkingHours();
-  
-    if (!duration || duration < 5) {
-      throw new BadRequestException('Invalid slot duration config');
-    }
-
-    if (!capacity || capacity < 1) {
-      throw new BadRequestException('Invalid slot capacity config');
-    }
+    this.validateWorkingHoursConfig(start, end);
 
     const workingDays = (await this.settingsService.getWorkingDays()).value;
 
@@ -155,8 +141,9 @@ export class AppointmentsService {
       );
     }
 
-    const duration = (await this.settingsService.getSlotDuration()).value;
+    const duration = await this.getValidatedSlotDuration();
     const { start, end } = await this.settingsService.getWorkingHours();
+    this.validateWorkingHoursConfig(start, end);
 
     const bookingMinutes = this.toMinutes(time);
     const startMinutes = this.toMinutes(start);
@@ -189,7 +176,7 @@ export class AppointmentsService {
     }
   
     // Check if appointment isalready booked
-    const capacity = (await this.settingsService.getSlotCapacity()).value;
+    const capacity = await this.getValidatedSlotCapacity();
 
     const appointment = await this.em.transactional(async (em) => {
       await em
@@ -264,6 +251,36 @@ export class AppointmentsService {
   private validateTime(time: string) {
     if (!time || !isValidTimeFormat(time)) {
       throw new BadRequestException('Time must be in HH:mm format');
+    }
+  }
+
+  private async getValidatedSlotDuration() {
+    const duration = (await this.settingsService.getSlotDuration()).value;
+
+    if (!Number.isInteger(duration) || duration < 5) {
+      throw new InternalServerErrorException('Invalid slot duration config');
+    }
+
+    return duration;
+  }
+
+  private async getValidatedSlotCapacity() {
+    const capacity = (await this.settingsService.getSlotCapacity()).value;
+
+    if (!Number.isInteger(capacity) || capacity < 1) {
+      throw new InternalServerErrorException('Invalid slot capacity config');
+    }
+
+    return capacity;
+  }
+
+  private validateWorkingHoursConfig(start: string, end: string) {
+    if (
+      !isValidTimeFormat(start) ||
+      !isValidTimeFormat(end) ||
+      this.toMinutes(start) >= this.toMinutes(end)
+    ) {
+      throw new InternalServerErrorException('Invalid working hours config');
     }
   }
 }
