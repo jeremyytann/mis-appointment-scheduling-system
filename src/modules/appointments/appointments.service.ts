@@ -21,6 +21,10 @@ export class AppointmentsService {
     private readonly em: EntityManager
   ) {}
 
+  async findAll() {
+    return this.em.find(Appointment, { isActive: true });
+  }
+
   async getAvailableSlots(date: string) {
     const offday = await this.offdaysService.findByDate(date);
 
