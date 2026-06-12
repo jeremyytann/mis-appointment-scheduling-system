@@ -15,4 +15,14 @@ export class SettingsController {
   updateSlotDuration(@Body() body: { value: number }) {
     return this.settingsService.updateSlotDuration(body.value);
   }
+
+  @Get('slot-capacity')
+  getSlotCapacity() {
+    return this.settingsService.getSlotCapacity();
+  }
+
+  @Patch('slot-capacity')
+  updateSlotCapacity(@Body() body: { value: number }) {
+    return this.settingsService.updateSlotCapacity(body.value);
+  }
 }

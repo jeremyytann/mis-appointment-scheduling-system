@@ -18,29 +18,37 @@ export class AppointmentsService {
   ) {}
 
   async getAvailableSlots(date: string) {
-    const bookedSlots = await this.getBookedSlots(date);
-  
     return {
       date,
-      slots: await this.generateSlots(date, bookedSlots),
+      slots: await this.generateSlots(date),
     };
   }
 
-  private async getBookedSlots(date: string) {
+  private async getSlotCounts(date: string) {
     const appointments = await this.em.find(Appointment, { date });
   
-    return appointments.map(a => a.startTime);
+    const map = new Map<string, number>();
+  
+    for (const a of appointments) {
+      const time = a.startTime;
+      map.set(time, (map.get(time) || 0) + 1);
+    }
+  
+    return map;
   }
 
-  private async generateSlots(date: string, bookedSlots: string[]) {
+  private async generateSlots(date: string) {
     const slots: any[] = [];
   
     const duration = (await this.settingsService.getSlotDuration()).value;
-
+    const capacity = (await this.settingsService.getSlotCapacity()).value;
+  
     if (!duration || duration < 5) {
       throw new BadRequestException('Invalid slot duration config');
     }
-    
+  
+    const slotCounts = await this.getSlotCounts(date);
+  
     let start = 9 * 60;
     const end = 18 * 60;
   
@@ -50,12 +58,13 @@ export class AppointmentsService {
   
       const time = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
   
-      const isBooked = bookedSlots.includes(time);
+      const bookedCount = slotCounts.get(time) || 0;
+      const available = Math.max(capacity - bookedCount, 0);
   
       slots.push({
         date,
         time,
-        available_slots: isBooked ? 0 : 1,
+        available_slots: available,
       });
   
       start += duration;
@@ -68,10 +77,15 @@ export class AppointmentsService {
     const { date, time } = dto;
   
     // Check if appointment isalready booked
-    const existing = await this.em.findOne(Appointment, { date, startTime: time });
+    const capacity = (await this.settingsService.getSlotCapacity()).value;
+
+    const count = await this.em.count(Appointment, {
+      date,
+      startTime: time,
+    });
   
-    if (existing) {
-      throw new BadRequestException('Slot already booked');
+    if (count >= capacity) {
+      throw new BadRequestException('Slot is fully booked');
     }
   
     // Create new appointment
