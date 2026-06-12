@@ -10,8 +10,8 @@ const config: Options = {
   host: process.env.DATABASE_HOST || 'localhost',
   port: Number(process.env.DATABASE_PORT) || 5432,
 
-  entitiesTs: ['./src/**/*.entity.ts'],
   entities: ['./dist/**/*.entity.js'],
+  entitiesTs: ['./src/**/*.entity.ts'],
 
   debug: true,
 };
