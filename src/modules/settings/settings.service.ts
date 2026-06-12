@@ -3,6 +3,7 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/core';
 import { Setting } from './entities/setting.entity';
 import { DEFAULT_SLOT_CAPACITY, DEFAULT_SLOT_DURATION, DEFAULT_WORKING_DAYS, DEFAULT_WORKING_END, DEFAULT_WORKING_START, MAX_SLOT_CAPACITY, MIN_SLOT_CAPACITY, MIN_SLOT_DURATION } from '../../config/defaults';
+import { isValidTimeFormat } from 'src/common/utils/time.util';
 
 function toMinutes(time: string) {
   const [h, m] = time.split(':').map(Number);
@@ -100,6 +101,12 @@ export class SettingsService {
   async updateWorkingHours(start: string, end: string) {
     if (!start || !end) {
       throw new BadRequestException('Start and end time are required');
+    }
+    
+    if (!isValidTimeFormat(start) || !isValidTimeFormat(end)) {
+      throw new BadRequestException(
+        'Working hours must be in HH:mm format (e.g. 09:00)'
+      );
     }
   
     const startMin = toMinutes(start);
