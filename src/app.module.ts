@@ -7,6 +7,7 @@ import { AppointmentsModule } from './modules/appointments/appointments.module';
 import config from 'mikro-orm.config';
 import { SettingsModule } from './modules/settings/settings.module';
 import { OffdaysModule } from './modules/offdays/offdays.module';
+import { UnavailableHoursModule } from './modules/unavailable-hours/unavailable-hours.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { OffdaysModule } from './modules/offdays/offdays.module';
     AppointmentsModule,
     SettingsModule,
     OffdaysModule,
+    UnavailableHoursModule,
   ],
   controllers: [AppController],
   providers: [AppService],

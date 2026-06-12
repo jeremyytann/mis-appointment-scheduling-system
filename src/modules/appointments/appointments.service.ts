@@ -4,6 +4,7 @@ import { Appointment } from './entities/appointment.entity';
 import { EntityManager } from '@mikro-orm/core';
 import { SettingsService } from '../settings/settings.service';
 import { OffdaysService } from '../offdays/offdays.service';
+import { UnavailableHoursService } from '../unavailable-hours/unavailable-hours.service';
 
 type Slot = {
   date: string;
@@ -16,6 +17,7 @@ export class AppointmentsService {
   constructor(
     private readonly offdaysService: OffdaysService,
     private readonly settingsService: SettingsService,
+    private readonly unavailableHoursService: UnavailableHoursService,
     private readonly em: EntityManager
   ) {}
 
@@ -74,33 +76,34 @@ export class AppointmentsService {
     if (!workingDays.includes(day)) {
       return [];
     }
-
-    const [sh, sm] = start.split(':').map(Number);
-    const [eh, em] = end.split(':').map(Number);
-
-    let current = sh * 60 + sm;
-    const endMin = eh * 60 + em;
   
+    const unavailableHours = await this.unavailableHoursService.findAllActive();
+
     const slotCounts = await this.getSlotCounts(date);
   
-    while (current < endMin) {
-      const hours = Math.floor(current / 60);
-      const minutes = current % 60;
+    const startMin = this.toMinutes(start);
+    const endMin = this.toMinutes(end);
 
-      const time = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
+    for (let current = startMin; current < endMin; current += duration) {
+      const time = this.formatTime(current);
 
       const bookedCount = slotCounts.get(time) || 0;
-      const available = Math.max(capacity - bookedCount, 0);
 
-      slots.push({
-        date,
-        time,
-        available_slots: available,
-      });
+      const blocked = this.isBlocked(current, unavailableHours);
 
-      current += duration;
+      const available = blocked
+        ? 0
+        : Math.max(capacity - bookedCount, 0);
+
+      if (!blocked) {
+        slots.push({
+          date,
+          time,
+          available_slots: available,
+        });
+      }
     }
-  
+
     return slots;
   }
 
@@ -112,6 +115,17 @@ export class AppointmentsService {
     if (offday) {
       throw new BadRequestException(
         `Cannot book on off day: ${offday.name}`
+      );
+    }
+
+    const unavailableHours = await this.unavailableHoursService.findAllActive();
+
+    let current = this.toMinutes(time);
+    const isBlocked = this.isBlocked(current, unavailableHours);
+
+    if (isBlocked) {
+      throw new BadRequestException(
+        'This time slot is not available (unavailable hours)'
       );
     }
   
@@ -151,5 +165,24 @@ export class AppointmentsService {
     const nm = total % 60;
   
     return `${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`;
+  }
+
+  private toMinutes(time: string) {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  }
+  
+  private formatTime(totalMinutes: number) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+  
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  
+  private isBlocked(time: number, ranges: any[]) {
+    return ranges.some(r =>
+      time >= this.toMinutes(r.startTime) &&
+      time < this.toMinutes(r.endTime),
+    );
   }
 }
