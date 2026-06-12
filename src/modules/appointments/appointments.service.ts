@@ -2,6 +2,7 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Appointment } from './entities/appointment.entity';
 import { EntityManager } from '@mikro-orm/core';
+import { SettingsService } from '../settings/settings.service';
 
 type Slot = {
   date: string;
@@ -11,14 +12,17 @@ type Slot = {
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private readonly em: EntityManager) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly em: EntityManager
+  ) {}
 
   async getAvailableSlots(date: string) {
     const bookedSlots = await this.getBookedSlots(date);
   
     return {
       date,
-      slots: this.generateSlots(date, bookedSlots),
+      slots: await this.generateSlots(date, bookedSlots),
     };
   }
 
@@ -28,9 +32,15 @@ export class AppointmentsService {
     return appointments.map(a => a.startTime);
   }
 
-  private generateSlots(date: string, bookedSlots: string[]) {
+  private async generateSlots(date: string, bookedSlots: string[]) {
     const slots: any[] = [];
   
+    const duration = (await this.settingsService.getSlotDuration()).value;
+
+    if (!duration || duration < 5) {
+      throw new BadRequestException('Invalid slot duration config');
+    }
+    
     let start = 9 * 60;
     const end = 18 * 60;
   
@@ -48,7 +58,7 @@ export class AppointmentsService {
         available_slots: isBooked ? 0 : 1,
       });
   
-      start += 30;
+      start += duration;
     }
   
     return slots;
