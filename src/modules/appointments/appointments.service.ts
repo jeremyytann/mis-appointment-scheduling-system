@@ -195,7 +195,7 @@ export class AppointmentsService {
     const appointment = this.em.create(Appointment, {
       date,
       startTime: time,
-      endTime: this.getEndTime(time),
+      endTime: this.getEndTime(time, duration),
     });
     
     await this.em.persistAndFlush(appointment);
@@ -206,10 +206,10 @@ export class AppointmentsService {
     };
   }
 
-  private getEndTime(startTime: string) {
+  private getEndTime(startTime: string, duration: number) {
     const [h, m] = startTime.split(':').map(Number);
   
-    const total = h * 60 + m + 30;
+    const total = h * 60 + m + duration;
   
     const nh = Math.floor(total / 60);
     const nm = total % 60;
