@@ -6,6 +6,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import config from 'mikro-orm.config';
 import { SettingsModule } from './modules/settings/settings.module';
+import { OffdaysModule } from './modules/offdays/offdays.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     MikroOrmModule.forRoot(config),
     AppointmentsModule,
     SettingsModule,
+    OffdaysModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -3,6 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Appointment } from './entities/appointment.entity';
 import { EntityManager } from '@mikro-orm/core';
 import { SettingsService } from '../settings/settings.service';
+import { OffdaysService } from '../offdays/offdays.service';
 
 type Slot = {
   date: string;
@@ -13,11 +14,22 @@ type Slot = {
 @Injectable()
 export class AppointmentsService {
   constructor(
+    private readonly offdaysService: OffdaysService,
     private readonly settingsService: SettingsService,
     private readonly em: EntityManager
   ) {}
 
   async getAvailableSlots(date: string) {
+    const offday = await this.offdaysService.findByDate(date);
+
+    if (offday) {
+      return {
+        isOffday: true,
+        offdayName: offday.name,
+        slots: [],
+      };
+    }
+
     return {
       date,
       slots: await this.generateSlots(date),
@@ -94,6 +106,14 @@ export class AppointmentsService {
 
   async bookAppointment(dto: { date: string; time: string }) {
     const { date, time } = dto;
+
+    const offday = await this.offdaysService.findByDate(date);
+
+    if (offday) {
+      throw new BadRequestException(
+        `Cannot book on off day: ${offday.name}`
+      );
+    }
   
     // Check if appointment isalready booked
     const capacity = (await this.settingsService.getSlotCapacity()).value;
