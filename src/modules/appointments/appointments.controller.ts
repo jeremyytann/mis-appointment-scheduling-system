@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Param, ParseIntPipe,  Delete,
+} from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 
 @Controller('appointments')
@@ -16,8 +17,18 @@ export class AppointmentsController {
     return this.appointmentsService.getAvailableSlots(date);
   }
 
+  @Get(':id')
+  findById(@Param('id', ParseIntPipe) id: number) {
+    return this.appointmentsService.findById(id);
+  }
+
   @Post()
   bookAppointment(@Body() body: any) {
     return this.appointmentsService.bookAppointment(body);
+  }
+
+  @Delete(':id')
+  deleteById(@Param('id', ParseIntPipe) id: number) {
+    return this.appointmentsService.deleteById(id);
   }
 }

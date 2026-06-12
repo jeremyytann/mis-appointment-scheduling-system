@@ -25,6 +25,30 @@ export class AppointmentsService {
     return this.em.find(Appointment, { isActive: true });
   }
 
+  async findById(id: number) {
+    const appointment = await this.em.findOne(Appointment, { id });
+
+    if (!appointment) {
+      throw new BadRequestException('Appointment not found');
+    }
+
+    return appointment;
+  }
+
+  async deleteById(id: number) {
+    const appointment = await this.em.findOne(Appointment, { id });
+
+    if (!appointment) {
+      throw new BadRequestException('Appointment not found');
+    }
+
+    await this.em.removeAndFlush(appointment);
+
+    return {
+      message: 'Appointment deleted successfully',
+    };
+  }
+
   async getAvailableSlots(date: string) {
     const offday = await this.offdaysService.findByDate(date);
 
