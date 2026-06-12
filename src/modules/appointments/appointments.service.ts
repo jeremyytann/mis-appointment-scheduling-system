@@ -1,7 +1,7 @@
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Appointment } from './entities/appointment.entity';
-import { EntityRepository } from '@mikro-orm/core';
+import { EntityManager } from '@mikro-orm/core';
 
 type Slot = {
   date: string;
@@ -11,10 +11,7 @@ type Slot = {
 
 @Injectable()
 export class AppointmentsService {
-  constructor(
-    @InjectRepository(Appointment)
-    private readonly appointmentRepo: EntityRepository<Appointment>,
-  ) {}
+  constructor(private readonly em: EntityManager) {}
 
   async getAvailableSlots(date: string) {
     const bookedSlots = await this.getBookedSlots(date);
@@ -26,7 +23,7 @@ export class AppointmentsService {
   }
 
   private async getBookedSlots(date: string) {
-    const appointments = await this.appointmentRepo.find({ date });
+    const appointments = await this.em.find(Appointment, { date });
   
     return appointments.map(a => a.startTime);
   }
@@ -55,5 +52,41 @@ export class AppointmentsService {
     }
   
     return slots;
+  }
+
+  async bookAppointment(dto: { date: string; time: string }) {
+    const { date, time } = dto;
+  
+    // Check if appointment isalready booked
+    const existing = await this.em.findOne(Appointment, { date, startTime: time });
+  
+    if (existing) {
+      throw new BadRequestException('Slot already booked');
+    }
+  
+    // Create new appointment
+    const appointment = this.em.create(Appointment, {
+      date,
+      startTime: time,
+      endTime: this.getEndTime(time),
+    });
+    
+    await this.em.persistAndFlush(appointment);
+  
+    return {
+      message: 'Appointment booked successfully',
+      data: appointment,
+    };
+  }
+
+  private getEndTime(startTime: string) {
+    const [h, m] = startTime.split(':').map(Number);
+  
+    const total = h * 60 + m + 30;
+  
+    const nh = Math.floor(total / 60);
+    const nm = total % 60;
+  
+    return `${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`;
   }
 }
